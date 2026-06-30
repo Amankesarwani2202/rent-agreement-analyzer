@@ -51,7 +51,6 @@ def render_header():
     st.caption(
         "Upload a rent agreement PDF or paste the text to extract key terms, spot risky clauses, and generate a tidy summary."
     )
-    st.info("This version is optimized for Streamlit Cloud and supports both native text PDFs and scanned-image PDFs when OCR is available.")
 
 
 def extract_pdf_text(uploaded_file):
@@ -92,12 +91,20 @@ def normalize_text(text):
 
 
 def split_sentences(text):
+    if not text or not text.strip():
+        return []
+
     nlp = get_nlp()
     if nlp is None:
         return [part.strip() for part in re.split(r"(?<=[.!?])\s+", text) if part.strip()]
 
-    doc = nlp(text[:350000])
-    return [sentence.text.strip() for sentence in doc.sents if len(sentence.text.strip()) > 30]
+    try:
+        doc = nlp(text[:350000])
+        sentences = [sentence.text.strip() for sentence in doc.sents if sentence and sentence.text]
+    except Exception:
+        sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", text) if part.strip()]
+
+    return [sentence for sentence in sentences if len(sentence) > 30]
 
 
 def extract_entities(text):

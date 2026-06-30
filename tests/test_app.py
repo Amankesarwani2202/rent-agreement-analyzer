@@ -40,6 +40,35 @@ def test_detect_red_flags_returns_high_risk_for_termination_language():
     assert score <= 100
 
 
+def test_split_sentences_falls_back_when_spacy_sentence_splitting_fails(monkeypatch):
+    class FakeDoc:
+        def __init__(self, text):
+            self.text = text
+
+        @property
+        def sents(self):
+            raise ValueError("sentence segmentation unavailable")
+
+    class FakeNLP:
+        def __call__(self, text):
+            return FakeDoc(text)
+
+    monkeypatch.setattr(module, "get_nlp", lambda: FakeNLP())
+
+    text = (
+        "This is sentence one that is long enough. "
+        "This is sentence two that is long enough. "
+        "This is sentence three that is long enough."
+    )
+    sentences = module.split_sentences(text)
+
+    assert sentences == [
+        "This is sentence one that is long enough.",
+        "This is sentence two that is long enough.",
+        "This is sentence three that is long enough.",
+    ]
+
+
 def test_extract_text_with_ocr_returns_empty_when_unavailable(monkeypatch):
     monkeypatch.setattr(module, "pytesseract", None, raising=False)
     monkeypatch.setattr(module, "pdf2image", None, raising=False)
