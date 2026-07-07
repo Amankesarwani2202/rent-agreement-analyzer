@@ -123,6 +123,28 @@ def test_extract_text_with_ocr_returns_empty_when_unavailable(monkeypatch):
     assert module.extract_text_with_ocr(b"fake-pdf") == ""
 
 
+def test_extract_key_terms_handles_the_austin_sample_lease():
+    text = """
+    RESIDENTIAL LEASE AGREEMENT
+    Standard Tenancy — 123 Maple Street, Austin, TX 78701
+    Lease Start: August 1, 2025 Lease End: July 31, 2026
+    1. RENT
+    Monthly rent is $1,850, due on the 1st of each month. A grace period of 5 days applies.
+    2. SECURITY DEPOSIT
+    A security deposit of $1,850 (one month's rent) is due upon signing.
+    8. TERMINATION & NOTICE
+    Either party must provide 30 days' written notice to terminate at lease end.
+    """
+
+    terms = module.extract_key_terms(text)
+
+    assert terms["Monthly Rent"] == "$1,850"
+    assert terms["Security Deposit"] == "$1,850"
+    assert "year" in terms["Lease Term"].lower()
+    assert terms["Notice Period"] == "30 days"
+    assert "1st" in terms["Payment Due"].lower()
+
+
 def test_analyze_agreement_handles_leases_across_jurisdictions():
     lease1 = module.analyze_agreement(LEASE_FIXTURES["lease1"]["text"], jurisdiction="US-TX")
     assert lease1["jurisdiction"] == "US-TX"

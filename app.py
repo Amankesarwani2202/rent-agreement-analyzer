@@ -2,6 +2,7 @@ import re
 import subprocess
 import sys
 from collections import defaultdict
+from datetime import datetime
 from functools import lru_cache
 
 import streamlit as st
@@ -284,64 +285,73 @@ def extract_number(text):
 
 def extract_key_terms(text):
     data = {}
+    normalized = normalize_text(text)
+    sentences = split_sentences(normalized)
 
-    data["Monthly Rent"] = find_first(
-        [
-            r"(?:monthly\s+rent|rent\s+shall\s+be|rent\s+is)\s*[:\-]?\s*([₹$]?\s?[\d,]+(?:\.\d{1,2})?)",
-            r"rent\s*[:\-]?\s*([₹$]?\s?[\d,]+(?:\.\d{1,2})?)",
-        ],
-        text,
-    )
+    rent_match = re.search(r"\bmonthly\s+rent\b[^$₹\n]{0,40}?([₹$]\s?[\d,]+(?:\.\d{1,2})?)", normalized, re.IGNORECASE)
+    if not rent_match:
+        rent_match = re.search(r"\brent\b[^$₹\n]{0,25}?([₹$]\s?[\d,]+(?:\.\d{1,2})?)", normalized, re.IGNORECASE)
+    data["Monthly Rent"] = rent_match.group(1).rstrip(",") if rent_match else "Not clearly found"
 
-    data["Security Deposit"] = find_first(
-        [
-            r"(?:security\s+deposit|deposit\s+amount|refundable\s+deposit)\s*(?:is|was|are|amount)?\s*[:\-]?\s*([₹$]?\s?[\d,]+(?:\.\d{1,2})?)",
-            r"deposit\s*(?:is|was|are|amount)?\s*[:\-]?\s*([₹$]?\s?[\d,]+(?:\.\d{1,2})?)",
-        ],
-        text,
-    )
+    deposit_match = re.search(r"\bsecurity\s+deposit\b[^$₹\n]{0,40}?([₹$]\s?[\d,]+(?:\.\d{1,2})?)", normalized, re.IGNORECASE)
+    if not deposit_match:
+        deposit_match = re.search(r"\bdeposit\b[^$₹\n]{0,40}?([₹$]\s?[\d,]+(?:\.\d{1,2})?)", normalized, re.IGNORECASE)
+    data["Security Deposit"] = deposit_match.group(1).rstrip(",") if deposit_match else "Not clearly found"
 
-    data["Lease Term"] = find_first(
-        [
-            r"(?:lease\s+term|term\s+of\s+this\s+agreement)\s*[:\-]?\s*([^\.\n]{2,80})",
-            r"for\s+a\s+term\s+of\s+([^\.\n]{2,80})",
-            r"(\d+\s*(?:month|months|year|years))",
-        ],
-        text,
-    )
+    lease_term = "Not clearly found"
+    start_match = re.search(r"lease\s+start[:\s]+([A-Za-z]+\s+\d{1,2},\s*\d{4})", normalized, re.IGNORECASE)
+    end_match = re.search(r"lease\s+end[:\s]+([A-Za-z]+\s+\d{1,2},\s*\d{4})", normalized, re.IGNORECASE)
+    if start_match and end_match:
+        try:
+            start_date = datetime.strptime(start_match.group(1), "%B %d, %Y")
+            end_date = datetime.strptime(end_match.group(1), "%B %d, %Y")
+            delta_years = (end_date.year - start_date.year)
+            if delta_years >= 1:
+                lease_term = f"{delta_years} year" if delta_years == 1 else f"{delta_years} years"
+            else:
+                lease_term = f"{(end_date.year - start_date.year) * 12} months"
+        except ValueError:
+            lease_term = "Not clearly found"
+    if lease_term == "Not clearly found":
+        term_match = re.search(r"\b(\d+)\s*(?:month|months|year|years)\b", normalized, re.IGNORECASE)
+        if term_match:
+            lease_term = term_match.group(0)
+    data["Lease Term"] = lease_term
 
-    data["Notice Period"] = find_first(
-        [
-            r"(?:notice\s+period|written\s+notice)\s*[:\-]?\s*([^\.\n]{2,90})",
-            r"(?:give|providing)\s+([^\.\n]{2,60}\s+notice)",
-            r"(\d+\s*(?:day|days|month|months))",
-        ],
-        text,
-    )
+    notice_match = re.search(r"\b(\d+)\s*(?:day|days|month|months)\b[^\.\n]{0,40}\bnotice\b", normalized, re.IGNORECASE)
+    if notice_match:
+        notice_value = notice_match.group(0)
+    else:
+        notice_match = re.search(r"\bnotice\s+period\b[^\.\n]{0,20}\b(\d+)\s*(?:day|days|month|months)\b", normalized, re.IGNORECASE)
+        if notice_match:
+            notice_value = notice_match.group(0)
+        else:
+            notice_match = re.search(r"\b(\d+)\s*(?:day|days|month|months)\b", normalized, re.IGNORECASE)
+            notice_value = notice_match.group(0) if notice_match else "Not clearly found"
+    notice_value = re.sub(r"\s+written\s+notice", "", notice_value, flags=re.IGNORECASE).strip()
+    duration_match = re.search(r"(\d+)\s*(day|days|month|months)", notice_value, re.IGNORECASE)
+    if duration_match:
+        amount = int(duration_match.group(1))
+        unit = duration_match.group(2).lower()
+        if unit.startswith("day"):
+            label = "day" if amount == 1 else "days"
+        else:
+            label = "month" if amount == 1 else "months"
+        data["Notice Period"] = f"{amount} {label}"
+    else:
+        data["Notice Period"] = notice_value
 
-    data["Payment Due"] = find_first(
-        [
-            r"(?:rent\s+due|due\s+date|payable\s+on)\s*[:\-]?\s*([^\.\n]{4,80})",
-            r"on\s+or\s+before\s+the\s+([^\.\n]{4,40})",
-        ],
-        text,
-    )
+    payment_due = "Not clearly found"
+    due_match = re.search(r"\bdue\s+on\s+the\s+([0-9]+(?:st|nd|rd|th))", normalized, re.IGNORECASE)
+    if due_match:
+        payment_due = f"Due on the {due_match.group(1)}"
+    data["Payment Due"] = payment_due
 
-    data["Utilities"] = find_first(
-        [
-            r"utilities\s*[:\-]?\s*([^\.\n]{8,140})",
-            r"tenant\s+shall\s+pay\s+for\s+([^\.\n]{8,120})",
-        ],
-        text,
-    )
+    utility_match = re.search(r"utilities\s*[:\-]?\s*([^\.\n]{8,140})", normalized, re.IGNORECASE)
+    data["Utilities"] = utility_match.group(1).strip() if utility_match else "Not clearly found"
 
-    data["Pet Policy"] = find_first(
-        [
-            r"pet(?:s)?\s*(?:policy)?\s*[:\-]?\s*([^\.\n]{6,120})",
-            r"no\s+pets\s+([^\.\n]{0,90})",
-        ],
-        text,
-    )
+    pet_match = re.search(r"pet(?:s)?\s*(?:policy)?\s*[:\-]?\s*([^\.\n]{6,140})", normalized, re.IGNORECASE)
+    data["Pet Policy"] = pet_match.group(1).strip() if pet_match else "Not clearly found"
 
     return data
 
@@ -511,8 +521,10 @@ def build_risk_flag(category, clause, jurisdiction, rules, law_reference=None):
             severity = "moderate"
             reason = "The renewal notice period is more burdensome than typical and should be reviewed."
     elif category == "repairs":
-        severity = "severe"
-        reason = "The clause shifts structural repair obligations to the tenant in a way that is typically improper."
+        lowered = clause.lower()
+        if any(token in lowered for token in ["structural", "roof", "all repairs", "major repairs", "habitability"]):
+            severity = "severe"
+            reason = "The clause shifts structural repair obligations to the tenant in a way that is typically improper."
     elif category == "guest_policy":
         severity = "moderate"
         reason = "The guest policy is unusually restrictive and may be difficult to enforce fairly."
