@@ -704,9 +704,12 @@ def generate_summary(text, entities, key_terms, clauses, risks, score, band):
     lines.append("5) RISK NOTES")
     if risks:
         for risk in risks:
-            lines.append(f"- [{risk['severity']}] {risk['term'].title()} | Why: {risk['why']}")
-            if risk["evidence"]:
-                lines.append(f"  Evidence: {risk['evidence']}")
+            label = risk.get("term") or risk.get("category") or "risk"
+            reason = risk.get("why") or risk.get("reason") or "Review this clause carefully."
+            evidence = risk.get("evidence") or ""
+            lines.append(f"- [{risk['severity']}] {str(label).title()} | Why: {reason}")
+            if evidence:
+                lines.append(f"  Evidence: {evidence}")
     else:
         lines.append("- No major suspicious terms from the configured risk list.")
     lines.append("")
