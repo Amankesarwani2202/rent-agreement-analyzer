@@ -145,6 +145,26 @@ def test_extract_key_terms_handles_the_austin_sample_lease():
     assert "1st" in terms["Payment Due"].lower()
 
 
+def test_analyze_agreement_handles_mumbai_leave_and_licence_sample():
+    text = """
+    LEAVE AND LICENCE AGREEMENT Mumbai, Maharashtra, India
+    Term: 1st October 2025 to 31st August 2026 (11 months)
+    The monthly licence fee is Rs. 22,000/-, payable by the 5th of each month.
+    The Licensee has paid Rs. 66,000/- as advance rent.
+    The Licensor may enter the premises at any time without prior notice for the remainder of the term.
+    Unless the Licensee provides written notice of intent to vacate no less than ninety (90) days before expiry, the agreement automatically renews for eleven (11) months.
+    """
+
+    analysis = module.analyze_agreement(text, jurisdiction="IN-MH")
+
+    assert analysis["jurisdiction"] == "IN-MH"
+    assert analysis["key_terms"]["rent"] == "Rs. 22,000/-"
+    assert analysis["key_terms"]["lease_term"] == "11 months"
+    assert analysis["key_terms"]["notice_period"] == "90 days"
+    assert any(flag["category"] == "entry" for flag in analysis["risk_flags"])
+    assert any(flag["category"] == "renewal" for flag in analysis["risk_flags"])
+
+
 def test_analyze_agreement_handles_leases_across_jurisdictions():
     lease1 = module.analyze_agreement(LEASE_FIXTURES["lease1"]["text"], jurisdiction="US-TX")
     assert lease1["jurisdiction"] == "US-TX"
@@ -169,3 +189,23 @@ def test_analyze_agreement_handles_leases_across_jurisdictions():
     assert len(lease4["risk_flags"]) >= 10
     categories = {flag["category"] for flag in lease4["risk_flags"]}
     assert {"late_fee", "deposit", "repairs", "entry", "eviction", "waiver", "guest_policy", "arbitration", "renewal", "government_contact"}.issubset(categories)
+
+
+def test_translate_text_supports_hindi_and_english_round_trip():
+    english = module.translate_text("किराया और जमानत", target_language="en")
+    assert "rent" in english.lower()
+    assert "deposit" in english.lower()
+
+    hindi = module.translate_text("rent deposit notice", target_language="hi")
+    assert "किराया" in hindi
+    assert "जमानत" in hindi
+    assert "नोटिस" in hindi
+
+
+def test_analyze_agreement_detects_indemnity_and_repair_risks():
+    text = "The tenant must indemnify the landlord for all claims and repair all structural damage."
+    analysis = module.analyze_agreement(text, jurisdiction="IN-DL")
+
+    categories = {flag["category"] for flag in analysis["risk_flags"]}
+    assert "indemnity" in categories
+    assert "repairs" in categories

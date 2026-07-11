@@ -175,35 +175,91 @@ def detect_language(text):
     return "en"
 
 
-def translate_text(text):
+def translate_text(text, target_language="en"):
     if not text:
         return text
 
-    translation_map = {
-        "रजिस्टर": "registered",
-        "नोटिस": "notice",
-        "मासिक": "monthly",
-        "किराया": "rent",
-        "जमानत": "deposit",
-        "मरम्मत": "repair",
-        "घुसपैठ": "entry",
-        "बाहरी": "outside",
-        "बंद": "closed",
-        "अधिकार": "rights",
-        "अभियोजन": "proceedings",
-        "सरकार": "government",
-    }
-    lowered = text.lower()
-    for source, target in translation_map.items():
-        lowered = lowered.replace(source, target)
-    return lowered
+    if target_language not in {"en", "hi"}:
+        return text
+
+    if target_language == "en":
+        translation_map = {
+            "रजिस्टर": "registered",
+            "नोटिस": "notice",
+            "मासिक": "monthly",
+            "किराया": "rent",
+            "जमानत": "deposit",
+            "मरम्मत": "repair",
+            "घुसपैठ": "entry",
+            "बाहरी": "outside",
+            "बंद": "closed",
+            "अधिकार": "rights",
+            "अभियोजन": "proceedings",
+            "सरकार": "government",
+            "समझौता": "agreement",
+            "मालिक": "landlord",
+            "किरायेदार": "tenant",
+            "माह": "month",
+            "दिन": "day",
+            "अवधि": "term",
+            "वापसी": "refund",
+            "शुल्क": "fee",
+            "दंड": "penalty",
+            "वसूली": "recovery",
+            "सीमित": "limited",
+        }
+    else:
+        translation_map = {
+            "registered": "रजिस्टर",
+            "notice": "नोटिस",
+            "monthly": "मासिक",
+            "rent": "किराया",
+            "deposit": "जमानत",
+            "repair": "मरम्मत",
+            "entry": "घुसपैठ",
+            "outside": "बाहरी",
+            "closed": "बंद",
+            "rights": "अधिकार",
+            "proceedings": "अभियोजन",
+            "government": "सरकार",
+            "agreement": "समझौता",
+            "landlord": "मालिक",
+            "tenant": "किरायेदार",
+            "month": "माह",
+            "day": "दिन",
+            "term": "अवधि",
+            "refund": "वापसी",
+            "fee": "शुल्क",
+            "penalty": "दंड",
+            "recovery": "वसूली",
+            "limited": "सीमित",
+        }
+
+    def apply_case(word, replacement):
+        if not word:
+            return replacement
+        if word.isupper():
+            return replacement.upper()
+        if word[0].isupper():
+            return replacement.capitalize()
+        return replacement
+
+    keys = sorted(translation_map.keys(), key=len, reverse=True)
+    pattern = re.compile(r"|".join(re.escape(key) for key in keys))
+
+    def replace_match(match):
+        word = match.group(0)
+        replacement = translation_map.get(word.lower(), word)
+        return apply_case(word, replacement)
+
+    return pattern.sub(replace_match, text)
 
 
-def preprocess_text(text):
+def preprocess_text(text, target_language="en"):
     normalized = normalize_text(text)
     language = detect_language(normalized)
-    if language == "hi":
-        normalized = translate_text(normalized)
+    if target_language != language:
+        normalized = translate_text(normalized, target_language=target_language)
     return normalized, language
 
 
@@ -270,7 +326,7 @@ def find_first(patterns, text, flags=re.IGNORECASE):
 
 
 def extract_currency(text):
-    match = re.search(r"([₹$]\s?[\d,]+(?:\.\d{1,2})?)", text)
+    match = re.search(r"([₹$]\s?[\d,]+(?:\.\d{1,2})?|Rs\.\s?[\d,]+(?:\.\d{1,2})?/?-?)", text)
     if match:
         return match.group(1)
     return None
@@ -288,15 +344,21 @@ def extract_key_terms(text):
     normalized = normalize_text(text)
     sentences = split_sentences(normalized)
 
-    rent_match = re.search(r"\bmonthly\s+rent\b[^$₹\n]{0,40}?([₹$]\s?[\d,]+(?:\.\d{1,2})?)", normalized, re.IGNORECASE)
+    rent_match = re.search(r"\bmonthly\s+(?:rent|licence fee|license fee)\b[^$₹\n]{0,40}?((?:Rs\.?|[₹$])\s?[\d,]+(?:\.\d{1,2})?/?-?)", normalized, re.IGNORECASE)
     if not rent_match:
-        rent_match = re.search(r"\brent\b[^$₹\n]{0,25}?([₹$]\s?[\d,]+(?:\.\d{1,2})?)", normalized, re.IGNORECASE)
-    data["Monthly Rent"] = rent_match.group(1).rstrip(",") if rent_match else "Not clearly found"
+        rent_match = re.search(r"\b(?:rent|licence fee|license fee)\b[^$₹\n]{0,25}?((?:Rs\.?|[₹$])\s?[\d,]+(?:\.\d{1,2})?/?-?)", normalized, re.IGNORECASE)
+    rent_value = rent_match.group(1).rstrip(",") if rent_match else "Not clearly found"
+    if rent_value.endswith("/-"):
+        rent_value = rent_value[:-2] + "/-"
+    data["Monthly Rent"] = rent_value
 
-    deposit_match = re.search(r"\bsecurity\s+deposit\b[^$₹\n]{0,40}?([₹$]\s?[\d,]+(?:\.\d{1,2})?)", normalized, re.IGNORECASE)
+    deposit_match = re.search(r"\bsecurity\s+deposit\b[^$₹\n]{0,40}?((?:Rs\.?|[₹$])\s?[\d,]+(?:\.\d{1,2})?)", normalized, re.IGNORECASE)
     if not deposit_match:
-        deposit_match = re.search(r"\bdeposit\b[^$₹\n]{0,40}?([₹$]\s?[\d,]+(?:\.\d{1,2})?)", normalized, re.IGNORECASE)
-    data["Security Deposit"] = deposit_match.group(1).rstrip(",") if deposit_match else "Not clearly found"
+        deposit_match = re.search(r"\b(?:deposit|advance rent)\b[^$₹\n]{0,40}?((?:Rs\.?|[₹$])\s?[\d,]+(?:\.\d{1,2})?)", normalized, re.IGNORECASE)
+    deposit_value = deposit_match.group(1).rstrip(",") if deposit_match else "Not clearly found"
+    if deposit_value.endswith("/-"):
+        deposit_value = deposit_value[:-2] + "/-"
+    data["Security Deposit"] = deposit_value
 
     lease_term = "Not clearly found"
     start_match = re.search(r"lease\s+start[:\s]+([A-Za-z]+\s+\d{1,2},\s*\d{4})", normalized, re.IGNORECASE)
@@ -318,28 +380,35 @@ def extract_key_terms(text):
             lease_term = term_match.group(0)
     data["Lease Term"] = lease_term
 
-    notice_match = re.search(r"\b(\d+)\s*(?:day|days|month|months)\b[^\.\n]{0,40}\bnotice\b", normalized, re.IGNORECASE)
-    if notice_match:
-        notice_value = notice_match.group(0)
-    else:
-        notice_match = re.search(r"\bnotice\s+period\b[^\.\n]{0,20}\b(\d+)\s*(?:day|days|month|months)\b", normalized, re.IGNORECASE)
-        if notice_match:
-            notice_value = notice_match.group(0)
-        else:
-            notice_match = re.search(r"\b(\d+)\s*(?:day|days|month|months)\b", normalized, re.IGNORECASE)
-            notice_value = notice_match.group(0) if notice_match else "Not clearly found"
-    notice_value = re.sub(r"\s+written\s+notice", "", notice_value, flags=re.IGNORECASE).strip()
-    duration_match = re.search(r"(\d+)\s*(day|days|month|months)", notice_value, re.IGNORECASE)
-    if duration_match:
-        amount = int(duration_match.group(1))
-        unit = duration_match.group(2).lower()
-        if unit.startswith("day"):
+    notice_value = "Not clearly found"
+    for sentence in sentences:
+        lowered = sentence.lower()
+        if any(token in lowered for token in ["notice", "vacate", "terminate", "expiry", "renew", "renewal"]):
+            day_match = re.search(r"\b(\d+)\s*(day|days)\b", sentence, re.IGNORECASE)
+            if day_match:
+                amount = int(day_match.group(1))
+                label = "day" if amount == 1 else "days"
+                notice_value = f"{amount} {label}"
+                break
+            month_match = re.search(r"\b(\d+)\s*(month|months)\b", sentence, re.IGNORECASE)
+            if month_match:
+                amount = int(month_match.group(1))
+                label = "month" if amount == 1 else "months"
+                notice_value = f"{amount} {label}"
+                break
+    if notice_value == "Not clearly found":
+        day_match = re.search(r"\b(\d+)\s*(day|days)\b", normalized, re.IGNORECASE)
+        if day_match:
+            amount = int(day_match.group(1))
             label = "day" if amount == 1 else "days"
+            notice_value = f"{amount} {label}"
         else:
-            label = "month" if amount == 1 else "months"
-        data["Notice Period"] = f"{amount} {label}"
-    else:
-        data["Notice Period"] = notice_value
+            month_match = re.search(r"\b(\d+)\s*(month|months)\b", normalized, re.IGNORECASE)
+            if month_match:
+                amount = int(month_match.group(1))
+                label = "month" if amount == 1 else "months"
+                notice_value = f"{amount} {label}"
+    data["Notice Period"] = notice_value
 
     payment_due = "Not clearly found"
     due_match = re.search(r"\bdue\s+on\s+the\s+([0-9]+(?:st|nd|rd|th))", normalized, re.IGNORECASE)
@@ -464,17 +533,17 @@ def format_list(values, limit=5):
 def build_risk_flag(category, clause, jurisdiction, rules, law_reference=None):
     severity = "none"
     reason = ""
+    lowered = clause.lower()
     if category == "late_fee":
         amount = extract_currency(clause)
         amount_value = extract_number(clause)
-        lowered = clause.lower()
         is_excessive = bool(
             amount
             and amount_value is not None
             and ((amount.startswith("$") and amount_value >= rules.get("late_fee_threshold", 100)) or (amount.startswith("₹") and amount_value >= rules.get("late_fee_threshold", 1000)))
         )
         is_per_day = "per day" in lowered or "daily" in lowered
-        lacks_grace = "grace period" not in lowered and "grace" not in lowered and "days" in lowered and "after" in lowered
+        lacks_grace = "grace period" not in lowered and "grace" not in lowered and ("days" in lowered or "day" in lowered) and "after" in lowered
         if is_excessive or (is_per_day and amount_value is not None and amount_value >= 100):
             severity = "severe"
             reason = "The late fee is unusually high and may be unenforceable."
@@ -482,15 +551,15 @@ def build_risk_flag(category, clause, jurisdiction, rules, law_reference=None):
             severity = "moderate"
             reason = "The late fee appears steep and should be tied to a clear grace period and a reasonable cap."
     elif category == "deposit":
-        if "non-refundable" in clause.lower():
+        if "non-refundable" in lowered:
             severity = "severe"
             reason = "A non-refundable deposit is risky because deposits should generally be refundable unless the law clearly permits otherwise."
-        elif "return" in clause.lower() and re.search(r"\b(\d+)\s*days\b", clause.lower()):
+        elif "return" in lowered and re.search(r"\b(\d+)\s*days\b", lowered):
             days = extract_number(clause.lower())
             if days is not None and days < 30:
                 severity = "mild"
                 reason = "The deposit return window is short and may leave the tenant waiting longer than expected."
-        elif "forfeit" in clause.lower() or "forfeits" in clause.lower():
+        elif "forfeit" in lowered or "forfeits" in lowered:
             severity = "mild"
             reason = "The clause allows forfeiture of a deposit on early exit, which should be reviewed carefully."
     elif category == "rent_increase":
@@ -499,13 +568,16 @@ def build_risk_flag(category, clause, jurisdiction, rules, law_reference=None):
             severity = "severe"
             reason = "The rent increase notice period is shorter than the minimum generally expected in this jurisdiction."
     elif category == "entry":
-        if "without notice" in clause.lower() or "without prior notice" in clause.lower() or "day or night" in clause.lower():
+        if any(token in lowered for token in ["without notice", "without prior notice", "day or night", "any time", "at any time", "without consent"]):
             severity = "severe"
             reason = "The landlord entry clause is overly broad and may violate notice requirements."
     elif category == "eviction":
-        if "for any reason" in clause.lower() or "48 hours" in clause.lower() or "24 hours" in clause.lower() or "24hrs" in clause.lower():
+        if any(token in lowered for token in ["for any reason", "48 hours", "24 hours", "24hrs", "immediately", "instant", "without cause"]):
             severity = "severe"
             reason = "The eviction clause is unusually short and may fail to meet the required notice or just-cause standards."
+        elif "terminate" in lowered or "vacate" in lowered:
+            severity = "moderate"
+            reason = "The termination language should be checked for fairness and legal compliance."
     elif category == "waiver":
         severity = "severe"
         reason = "The clause waives important tenant rights and may be unenforceable."
@@ -520,9 +592,11 @@ def build_risk_flag(category, clause, jurisdiction, rules, law_reference=None):
         if notice_days is not None and notice_days > rules.get("renewal_notice_days_min", 30):
             severity = "moderate"
             reason = "The renewal notice period is more burdensome than typical and should be reviewed."
+        elif "automatically renew" in lowered or "renew for" in lowered or "auto renew" in lowered:
+            severity = "moderate"
+            reason = "The renewal clause may lock the tenant into another term without a clear chance to opt out."
     elif category == "repairs":
-        lowered = clause.lower()
-        if any(token in lowered for token in ["structural", "roof", "all repairs", "major repairs", "habitability"]):
+        if any(token in lowered for token in ["structural", "roof", "all repairs", "major repairs", "habitability", "damage"]):
             severity = "severe"
             reason = "The clause shifts structural repair obligations to the tenant in a way that is typically improper."
     elif category == "guest_policy":
@@ -531,6 +605,13 @@ def build_risk_flag(category, clause, jurisdiction, rules, law_reference=None):
     elif category == "government_contact":
         severity = "severe"
         reason = "The clause punishes lawful contact with government authorities and is likely unenforceable."
+    elif category == "indemnity":
+        if any(token in lowered for token in ["indemnify", "hold harmless", "all claims", "all liabilities", "all damages"]):
+            severity = "severe"
+            reason = "The indemnity clause could expose the tenant to broad liability beyond the lease’s ordinary scope."
+    elif category == "subletting":
+        severity = "moderate"
+        reason = "The subletting clause may be too restrictive and should be clarified."
 
     if severity != "none":
         return {
@@ -548,52 +629,60 @@ def classify_clauses(sentences, jurisdiction):
     flags = []
     for sentence in sentences:
         text = sentence.lower()
-        if "late fee" in text or "late fees" in text:
+        if any(token in text for token in ["late fee", "late fees", "delay charge", "penalty fee"]):
             risk = build_risk_flag("late_fee", sentence, jurisdiction, rules, "Applicable late-fee law")
             if risk:
                 flags.append(risk)
-        if "deposit" in text or "security deposit" in text:
+        if any(token in text for token in ["deposit", "security deposit", "advance rent", "refundable deposit"]):
             risk = build_risk_flag("deposit", sentence, jurisdiction, rules, rules.get("deposit_reference"))
             if risk:
                 flags.append(risk)
-        if "rent increase" in text or "increase" in text and "notice" in text:
+        if any(token in text for token in ["rent increase", "increase in rent", "increase of rent", "increased rent", "rent may be increased", "increase", "increased"]) and ("rent" in text or "notice" in text):
             risk = build_risk_flag("rent_increase", sentence, jurisdiction, rules)
             if risk:
                 flags.append(risk)
-        if "entry" in text or "enter" in text or "access" in text:
+        if any(token in text for token in ["entry", "enter", "access", "premises", "without notice", "without prior notice", "day or night", "at any time"]):
             risk = build_risk_flag("entry", sentence, jurisdiction, rules, rules.get("entry_notice_reference"))
             if risk:
                 flags.append(risk)
-        if "evict" in text or "vacate" in text or "eviction" in text or "terminate" in text:
+        if any(token in text for token in ["evict", "eviction", "vacate", "forfeited", "forfeit", "immediately", "without cause", "for any reason", "terminate anytime", "terminate at any time", "24 hours", "48 hours"]):
             risk = build_risk_flag("eviction", sentence, jurisdiction, rules, rules.get("eviction_reference"))
             if risk:
                 flags.append(risk)
-        if "waive" in text or "waiver" in text or "waives" in text:
+        if any(token in text for token in ["waive", "waiver", "waives", "right to challenge", "right to approach any court"]):
             risk = build_risk_flag("waiver", sentence, jurisdiction, rules)
             if risk:
                 flags.append(risk)
-        if "arbitrator" in text or "arbitration" in text or "jury" in text:
+        if any(token in text for token in ["arbitrator", "arbitration", "jury trial", "neutral adjudication"]):
             risk = build_risk_flag("arbitration", sentence, jurisdiction, rules)
             if risk:
                 flags.append(risk)
-        if "penalty" in text or "fine" in text or "per nail" in text:
+        if any(token in text for token in ["penalty", "fine", "per nail", "per hole", "charge per"]):
             risk = build_risk_flag("penalty", sentence, jurisdiction, rules)
             if risk:
                 flags.append(risk)
-        if "renew" in text or "renewal" in text:
+        if any(token in text for token in ["renew", "renewal", "automatically renew", "auto renew"]):
             risk = build_risk_flag("renewal", sentence, jurisdiction, rules)
             if risk:
                 flags.append(risk)
-        if "repair" in text or "structural" in text or "roof" in text:
+        if any(token in text for token in ["repair", "structural", "roof", "habitability", "maintenance", "damage"]):
             risk = build_risk_flag("repairs", sentence, jurisdiction, rules)
             if risk:
                 flags.append(risk)
-        if "guest" in text or "night" in text and "stay" in text:
+        if any(token in text for token in ["guest", "visitor", "stay"]):
             risk = build_risk_flag("guest_policy", sentence, jurisdiction, rules)
             if risk:
                 flags.append(risk)
-        if "government" in text or "authority" in text:
+        if any(token in text for token in ["government", "authority", "police", "legal authority"]):
             risk = build_risk_flag("government_contact", sentence, jurisdiction, rules)
+            if risk:
+                flags.append(risk)
+        if any(token in text for token in ["indemnify", "indemnity", "hold harmless", "all claims", "all liabilities"]):
+            risk = build_risk_flag("indemnity", sentence, jurisdiction, rules)
+            if risk:
+                flags.append(risk)
+        if any(token in text for token in ["sublet", "subletting", "assign", "transfer"]):
+            risk = build_risk_flag("subletting", sentence, jurisdiction, rules)
             if risk:
                 flags.append(risk)
 
@@ -622,8 +711,8 @@ def infer_jurisdiction(text, jurisdiction=None):
     return "DEFAULT"
 
 
-def analyze_agreement(text, jurisdiction=None):
-    processed_text, _ = preprocess_text(text)
+def analyze_agreement(text, jurisdiction=None, target_language="en"):
+    processed_text, _ = preprocess_text(text, target_language=target_language)
     sentences = split_sentences(processed_text)
     jurisdiction_code = infer_jurisdiction(processed_text, jurisdiction)
     rules = JURISDICTION_RULES.get(jurisdiction_code, JURISDICTION_RULES["DEFAULT"])
@@ -665,6 +754,12 @@ def analyze_agreement(text, jurisdiction=None):
             "The core terms around rent, deposit, notice, and fees look balanced and do not show obvious illegal or unusually one-sided clauses."
         )
 
+    recommendation = ""
+    if risk_flags:
+        recommendation = "Revise the risky clauses before signing and ask for a local tenancy-law review."
+    else:
+        recommendation = "The draft looks broadly balanced; keep the document in plain language and preserve clear notice and repair obligations."
+
     return {
         "jurisdiction": jurisdiction_code,
         "jurisdiction_rules": rules,
@@ -681,6 +776,7 @@ def analyze_agreement(text, jurisdiction=None):
         "score": score,
         "band": band,
         "entities": entities,
+        "recommendation": recommendation,
     }
 
 
@@ -767,6 +863,10 @@ def main():
         placeholder="Paste the agreement text here if you do not want to upload a PDF.",
     )
 
+    st.subheader("Translation options")
+    target_language = st.selectbox("Translate detected agreement text", ["en", "hi"], format_func=lambda value: "English" if value == "en" else "Hindi")
+    show_translation = st.checkbox("Show translated preview", value=True)
+
     if st.button("Analyze Agreement"):
         if uploaded_file is not None:
             raw_text = extract_pdf_text(uploaded_file)
@@ -779,7 +879,8 @@ def main():
             st.stop()
 
         with st.spinner("Analyzing agreement..."):
-            analysis = analyze_agreement(text)
+            analysis = analyze_agreement(text, target_language="en")
+            translated_text = translate_text(text, target_language=target_language)
             sentences = split_sentences(text)
             entities = extract_entities(text)
             key_terms = extract_key_terms(text)
@@ -788,7 +889,11 @@ def main():
             score = analysis.get("score", 100)
             band = analysis.get("band", "Low")
             summary = generate_summary(text, entities, key_terms, clauses, risks, score, band)
+            summary = summary + f"\n\nRecommendation: {analysis.get('recommendation', '')}"
 
+        if show_translation and translated_text:
+            st.info(f"Translated preview ({'English' if target_language == 'en' else 'Hindi'}):")
+            st.write(translated_text)
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Words reviewed", len(text.split()))
