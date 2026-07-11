@@ -1,0 +1,57 @@
+{
+  "jurisdiction": "US-CA",
+  "jurisdiction_rules": {
+    "entry_notice_required": true,
+    "rent_increase_notice_days_min": 30,
+    "eviction_notice_days_min": 3,
+    "eviction_requires_just_cause": true,
+    "deposit_must_be_refundable": true,
+    "deposit_max_months": 2,
+    "late_fee_threshold_usd": 100,
+    "late_fee_threshold_inr": 1000,
+    "repair_liability_allowed": false,
+    "arbitration_neutrality_required": true,
+    "renewal_notice_days_max": 30,
+    "guest_policy_min_nights": 3,
+    "deposit_return_days_max": 21,
+    "entry_notice_reference": "CA Civil Code § 1954",
+    "eviction_reference": "CA just-cause eviction requirements",
+    "deposit_reference": "CA Civil Code § 1950.5 (deposit rules)"
+  },
+  "key_terms": {
+    "rent": "$2,400",
+    "deposit": "$2,400",
+    "lease_term": "1 year",
+    "notice_period": "30 days",
+    "payment_due": "Due on the 1st",
+    "deposit_refundable": true
+  },
+  "key_terms_raw": {
+    "Monthly Rent": "$2,400",
+    "Security Deposit": "$2,400",
+    "Lease Term": "1 year",
+    "Notice Period": "30 days",
+    "Payment Due": "Due on the 1st",
+    "Utilities": "the Tenant pays electricity and internet, while the Landlord pays for water and trash collection",
+    "Pet Policy": "one cat is permitted with prior written approval, and no additional pet rent applies"
+  },
+  "risk_flags": [],
+  "summary": "This lease appears broadly fair and tenant-friendly. The core terms around rent, deposit, notice, and fees look balanced and do not show obvious illegal or unusually one-sided clauses.",
+  "score": 100,
+  "band": "Low",
+  "entities": {},
+  "sentences": [
+    "RESIDENTIAL LEASE AGREEMENT",
+    "This Residential Lease Agreement is made between Jane Smith (Landlord) and Robert Chen (Tenant) for the premises at 421 Oak Street, Los Angeles, California.",
+    "The monthly rent is $2,400 payable in advance, due on the 1st day of each month.",
+    "The Tenant shall pay a security deposit of $2,400, which is fully refundable and shall be returned within 21 days of move-out, less lawful deductions for damage beyond normal wear and tear.",
+    "The lease term is 12 months, commencing on Lease Start: June 1, 2026 and ending on Lease End: May 31, 2027.",
+    "Either party may terminate this agreement at the end of the term by providing 30 days written notice to the other party.",
+    "The Landlord shall provide at least 24 hours written notice before entering the premises, except in case of emergency, per CA Civil Code Section 1954.",
+    "Utilities: the Tenant pays electricity and internet, while the Landlord pays for water and trash collection.",
+    "Pets: one cat is permitted with prior written approval, and no additional pet rent applies.",
+    "A late fee of $50 applies if rent is received more than 5 days after the due date, following a grace period.",
+    "The Landlord is responsible for structural repairs and maintaining the premises in habitable condition, while the Tenant handles minor upkeep.",
+    "Any rent increase requires at least 30 days written notice as required by law."
+  ]
+}

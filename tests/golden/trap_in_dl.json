@@ -1,0 +1,130 @@
+{
+  "jurisdiction": "IN-DL",
+  "jurisdiction_rules": {
+    "entry_notice_required": true,
+    "rent_increase_notice_days_min": 30,
+    "eviction_notice_days_min": 15,
+    "eviction_requires_just_cause": true,
+    "deposit_must_be_refundable": true,
+    "deposit_max_months": 3,
+    "late_fee_threshold_usd": 100,
+    "late_fee_threshold_inr": 1000,
+    "repair_liability_allowed": false,
+    "arbitration_neutrality_required": true,
+    "renewal_notice_days_max": 30,
+    "guest_policy_min_nights": 3,
+    "deposit_return_days_max": 30,
+    "entry_notice_reference": "Delhi Rent Control Act notice requirements",
+    "eviction_reference": "Delhi Rent Control Act",
+    "deposit_reference": "Delhi Rent Control Act deposit rules"
+  },
+  "key_terms": {
+    "rent": "₹25,000",
+    "deposit": "₹2,50,000",
+    "lease_term": "Not clearly found",
+    "notice_period": "60 days",
+    "payment_due": "Not clearly found",
+    "deposit_refundable": true
+  },
+  "key_terms_raw": {
+    "Monthly Rent": "₹25,000",
+    "Security Deposit": "₹2,50,000",
+    "Lease Term": "Not clearly found",
+    "Notice Period": "60 days",
+    "Payment Due": "Not clearly found",
+    "Utilities": "Not clearly found",
+    "Pet Policy": "Not clearly found"
+  },
+  "risk_flags": [
+    {
+      "category": "deposit",
+      "clause": "The Lessee shall pay a security deposit of ₹2,50,000 and the deposit shall be forfeited in full if the Lessee vacates before the lock-in period.",
+      "severity": "severe",
+      "reason": "The clause forfeits the entire deposit on early exit regardless of actual loss - a punitive pattern.",
+      "reason_key": "deposit_forfeiture",
+      "law_reference": "Delhi Rent Control Act deposit rules"
+    },
+    {
+      "category": "late_fee",
+      "clause": "A late fee of ₹2,000 per day shall apply for delayed rent after the due date.",
+      "severity": "severe",
+      "reason": "The late fee accrues per day, which compounds quickly and is a classic unenforceable-penalty pattern.",
+      "reason_key": "late_fee_per_day",
+      "law_reference": "Delhi Rent Control Act notice requirements"
+    },
+    {
+      "category": "entry",
+      "clause": "The Lessor or his agents may enter the premises without prior notice at any time to inspect the property.",
+      "severity": "severe",
+      "reason": "The entry clause lets the landlord enter without effective notice limits, violating standard notice requirements.",
+      "reason_key": "entry_broad",
+      "law_reference": "Delhi Rent Control Act notice requirements"
+    },
+    {
+      "category": "eviction",
+      "clause": "The Lessor may evict the Lessee for any reason with 48 hours notice.",
+      "severity": "severe",
+      "reason": "The termination/eviction clause is one-sided: termination at will/sole discretion; only 2.0 days notice (minimum here: 15).",
+      "reason_key": "eviction_one_sided",
+      "law_reference": "Delhi Rent Control Act"
+    },
+    {
+      "category": "waiver",
+      "clause": "The Lessee waives all rights under the Delhi Rent Control Act and any other tenant protection law.",
+      "severity": "severe",
+      "reason": "The tenant is made to waive legal rights or protections; such blanket waivers are typically unenforceable but signal intent.",
+      "reason_key": "waiver_rights",
+      "law_reference": "Delhi Rent Control Act notice requirements"
+    },
+    {
+      "category": "repairs",
+      "clause": "The Lessee shall be responsible for all repairs including structural and major repairs to the premises.",
+      "severity": "severe",
+      "reason": "Structural/major repair obligations are shifted to the tenant; these are legally the landlord's responsibility.",
+      "reason_key": "repairs_tenant_structural",
+      "law_reference": "Delhi Rent Control Act notice requirements"
+    },
+    {
+      "category": "guest_policy",
+      "clause": "No guest shall stay overnight in the premises without the prior written permission of the Lessor.",
+      "severity": "moderate",
+      "reason": "The guest policy is unusually restrictive (blanket bans or per-stay landlord permission) and intrudes on ordinary quiet enjoyment.",
+      "reason_key": "guest_restrictive",
+      "law_reference": "Delhi Rent Control Act notice requirements"
+    },
+    {
+      "category": "government_contact",
+      "clause": "The Lessee shall not approach any government authority with any complaint regarding the premises or this agreement.",
+      "severity": "severe",
+      "reason": "The clause punishes lawful complaints to authorities - retaliatory and almost certainly unenforceable, and a serious red flag about the landlord.",
+      "reason_key": "govt_retaliation",
+      "law_reference": "Delhi Rent Control Act notice requirements"
+    },
+    {
+      "category": "renewal",
+      "clause": "The agreement shall renew only at the sole discretion of the Lessor with 60 days notice from the Lessee required for renewal.",
+      "severity": "moderate",
+      "reason": "Renewal (or renewal rent) is at the landlord's sole discretion - the tenant has no predictable right to stay.",
+      "reason_key": "renewal_sole_discretion",
+      "law_reference": "Delhi Rent Control Act notice requirements"
+    }
+  ],
+  "summary": "This lease contains several clauses that appear one-sided or potentially unlawful. The strongest concerns are around fees, notice rights, eviction, and repair obligations, and those terms should be revised before signing.",
+  "score": 0,
+  "band": "High",
+  "entities": {},
+  "sentences": [
+    "This Rent Agreement is executed at New Delhi between Shri Ramesh Kumar (Lessor) and Ms.",
+    "Priya Sharma (Lessee) for the residential premises situated at C-14, Lajpat Nagar, New Delhi.",
+    "The monthly rent shall be ₹25,000 payable in advance on or before the 5th day of each English calendar month.",
+    "The Lessee shall pay a security deposit of ₹2,50,000 and the deposit shall be forfeited in full if the Lessee vacates before the lock-in period.",
+    "A late fee of ₹2,000 per day shall apply for delayed rent after the due date.",
+    "The Lessor or his agents may enter the premises without prior notice at any time to inspect the property.",
+    "The Lessor may evict the Lessee for any reason with 48 hours notice.",
+    "The Lessee waives all rights under the Delhi Rent Control Act and any other tenant protection law.",
+    "The Lessee shall be responsible for all repairs including structural and major repairs to the premises.",
+    "No guest shall stay overnight in the premises without the prior written permission of the Lessor.",
+    "The Lessee shall not approach any government authority with any complaint regarding the premises or this agreement.",
+    "The agreement shall renew only at the sole discretion of the Lessor with 60 days notice from the Lessee required for renewal."
+  ]
+}

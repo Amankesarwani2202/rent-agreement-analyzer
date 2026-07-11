@@ -1,0 +1,147 @@
+{
+  "jurisdiction": "US-CA",
+  "jurisdiction_rules": {
+    "entry_notice_required": true,
+    "rent_increase_notice_days_min": 30,
+    "eviction_notice_days_min": 3,
+    "eviction_requires_just_cause": true,
+    "deposit_must_be_refundable": true,
+    "deposit_max_months": 2,
+    "late_fee_threshold_usd": 100,
+    "late_fee_threshold_inr": 1000,
+    "repair_liability_allowed": false,
+    "arbitration_neutrality_required": true,
+    "renewal_notice_days_max": 30,
+    "guest_policy_min_nights": 3,
+    "deposit_return_days_max": 21,
+    "entry_notice_reference": "CA Civil Code § 1954",
+    "eviction_reference": "CA just-cause eviction requirements",
+    "deposit_reference": "CA Civil Code § 1950.5 (deposit rules)"
+  },
+  "key_terms": {
+    "rent": "$2,000",
+    "deposit": "$6,000",
+    "lease_term": "12 month",
+    "notice_period": "90 days",
+    "payment_due": "Due on the 1st",
+    "deposit_refundable": true
+  },
+  "key_terms_raw": {
+    "Monthly Rent": "$2,000",
+    "Security Deposit": "$6,000",
+    "Lease Term": "12 month",
+    "Notice Period": "90 days",
+    "Payment Due": "Due on the 1st",
+    "Utilities": "Not clearly found",
+    "Pet Policy": "Not clearly found"
+  },
+  "risk_flags": [
+    {
+      "category": "deposit",
+      "clause": "The Tenant shall pay a security deposit of $6,000 which is non-refundable under all circumstances.",
+      "severity": "severe",
+      "reason": "The deposit is effectively non-refundable; deposits must generally be refundable by law.",
+      "reason_key": "deposit_nonrefundable",
+      "law_reference": "CA Civil Code § 1950.5 (deposit rules)"
+    },
+    {
+      "category": "late_fee",
+      "clause": "A late fee of $150 per day applies to any rent received after the due date.",
+      "severity": "severe",
+      "reason": "The late fee accrues per day, which compounds quickly and is a classic unenforceable-penalty pattern.",
+      "reason_key": "late_fee_per_day",
+      "law_reference": "CA Civil Code § 1954"
+    },
+    {
+      "category": "entry",
+      "clause": "The Landlord may enter the premises at any time without notice, day or night, for inspection or any other purpose.",
+      "severity": "severe",
+      "reason": "The entry clause lets the landlord enter without effective notice limits, violating standard notice requirements.",
+      "reason_key": "entry_broad",
+      "law_reference": "CA Civil Code § 1954"
+    },
+    {
+      "category": "eviction",
+      "clause": "The Landlord may terminate this lease at any time for any reason with 24 hours notice, and the Tenant must vacate immediately.",
+      "severity": "severe",
+      "reason": "The termination/eviction clause is one-sided: termination at will/sole discretion; immediate vacation demanded; only 1.0 days notice (minimum here: 3).",
+      "reason_key": "eviction_one_sided",
+      "law_reference": "CA just-cause eviction requirements"
+    },
+    {
+      "category": "waiver",
+      "clause": "The Tenant waives the right to a jury trial and agrees that all disputes shall be decided by an arbitrator selected solely by the Landlord.",
+      "severity": "severe",
+      "reason": "The tenant is made to waive legal rights or protections; such blanket waivers are typically unenforceable but signal intent.",
+      "reason_key": "waiver_rights",
+      "law_reference": "CA Civil Code § 1954"
+    },
+    {
+      "category": "arbitration",
+      "clause": "The Tenant waives the right to a jury trial and agrees that all disputes shall be decided by an arbitrator selected solely by the Landlord.",
+      "severity": "severe",
+      "reason": "The dispute clause is one-sided: the landlord controls the arbitrator selection or the tenant bears all costs.",
+      "reason_key": "arbitration_one_sided",
+      "law_reference": "CA Civil Code § 1954"
+    },
+    {
+      "category": "repairs",
+      "clause": "The Tenant is responsible for all repairs including structural repairs, roof repairs, and habitability issues at the Tenant's own expense.",
+      "severity": "severe",
+      "reason": "Structural/major repair obligations are shifted to the tenant; these are legally the landlord's responsibility.",
+      "reason_key": "repairs_tenant_structural",
+      "law_reference": "CA Civil Code § 1954"
+    },
+    {
+      "category": "penalty",
+      "clause": "A penalty of $100 per nail hole will be deducted from the deposit at move-out.",
+      "severity": "severe",
+      "reason": "Per-item or outsized penalties (e.g. per nail hole) are punitive charges courts rarely enforce - and a strong bad-faith signal.",
+      "reason_key": "penalty_per_item",
+      "law_reference": "CA Civil Code § 1954"
+    },
+    {
+      "category": "guest_policy",
+      "clause": "Guests may not stay overnight more than one night per month, and any guest stay requires advance written approval.",
+      "severity": "moderate",
+      "reason": "The guest policy is unusually restrictive (blanket bans or per-stay landlord permission) and intrudes on ordinary quiet enjoyment.",
+      "reason_key": "guest_restrictive",
+      "law_reference": "CA Civil Code § 1954"
+    },
+    {
+      "category": "government_contact",
+      "clause": "The Tenant agrees never to contact any government authority or housing inspector regarding the premises, and any such contact is grounds for immediate eviction.",
+      "severity": "severe",
+      "reason": "The clause punishes lawful complaints to authorities - retaliatory and almost certainly unenforceable, and a serious red flag about the landlord.",
+      "reason_key": "govt_retaliation",
+      "law_reference": "CA Civil Code § 1954"
+    },
+    {
+      "category": "renewal",
+      "clause": "This lease automatically renews for a further 12 month term unless the Tenant provides 90 days notice of non-renewal.",
+      "severity": "moderate",
+      "reason": "Auto-renewal requires 90 days advance notice to escape - an easy trap; 30 days is the norm.",
+      "reason_key": "renewal_auto_long_notice",
+      "law_reference": "CA Civil Code § 1954"
+    }
+  ],
+  "summary": "This lease contains several clauses that appear one-sided or potentially unlawful. The strongest concerns are around fees, notice rights, eviction, and repair obligations, and those terms should be revised before signing.",
+  "score": 0,
+  "band": "High",
+  "entities": {},
+  "sentences": [
+    "RESIDENTIAL LEASE AGREEMENT",
+    "This lease is between Property Holdings LLC (Landlord) and the undersigned Tenant for a unit in Los Angeles, California.",
+    "The monthly rent is $2,000, due on the 1st of the month.",
+    "The Tenant shall pay a security deposit of $6,000 which is non-refundable under all circumstances.",
+    "A late fee of $150 per day applies to any rent received after the due date.",
+    "The Landlord may enter the premises at any time without notice, day or night, for inspection or any other purpose.",
+    "The Landlord may terminate this lease at any time for any reason with 24 hours notice, and the Tenant must vacate immediately.",
+    "The Tenant waives the right to a jury trial and agrees that all disputes shall be decided by an arbitrator selected solely by the Landlord.",
+    "The Tenant is responsible for all repairs including structural repairs, roof repairs, and habitability issues at the Tenant's own expense.",
+    "A penalty of $100 per nail hole will be deducted from the deposit at move-out.",
+    "Guests may not stay overnight more than one night per month, and any guest stay requires advance written approval.",
+    "The Tenant agrees never to contact any government authority or housing inspector regarding the premises, and any such contact is grounds for immediate eviction.",
+    "This lease automatically renews for a further 12 month term unless the Tenant provides 90 days notice of non-renewal."
+  ]
+}
