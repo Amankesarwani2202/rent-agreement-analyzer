@@ -20,6 +20,22 @@ try:
 except ImportError:  # pragma: no cover - handled gracefully in cloud/runtime
     spacy = None
 
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import Pipeline
+except ImportError:  # pragma: no cover - handled gracefully in cloud/runtime
+    TfidfVectorizer = None
+    LogisticRegression = None
+    Pipeline = None
+
+try:
+    import argostranslate.package as argos_package
+    import argostranslate.translate as argos_translate
+except ImportError:  # pragma: no cover - handled gracefully in cloud/runtime
+    argos_package = None
+    argos_translate = None
+
 
 JURISDICTION_RULES = {
     "DEFAULT": {
@@ -253,6 +269,59 @@ def translate_text(text, target_language="en"):
         return apply_case(word, replacement)
 
     return pattern.sub(replace_match, text)
+
+
+@lru_cache(maxsize=8)
+def ensure_argos_package(from_code, to_code):
+    """Make sure a local Argos Translate model for this language pair is installed.
+
+    Argos Translate is an offline neural machine translation library (CTranslate2-based).
+    The very first call for a given language pair downloads a small open-source model
+    file once; every translation after that runs 100% locally with no network calls and
+    no external AI API. If the download fails (e.g. no internet at deploy time), this
+    quietly returns False and the app falls back to the dictionary-based translator below.
+    """
+    if argos_translate is None or argos_package is None or from_code == to_code:
+        return False
+
+    try:
+        installed_languages = argos_translate.get_installed_languages()
+        from_lang = next((lang for lang in installed_languages if lang.code == from_code), None)
+        to_lang = next((lang for lang in installed_languages if lang.code == to_code), None)
+        if from_lang is not None and to_lang is not None and from_lang.get_translation(to_lang) is not None:
+            return True
+
+        argos_package.update_package_index()
+        available_packages = argos_package.get_available_packages()
+        package_to_install = next(
+            (pkg for pkg in available_packages if pkg.from_code == from_code and pkg.to_code == to_code),
+            None,
+        )
+        if package_to_install is None:
+            return False
+
+        download_path = package_to_install.download()
+        argos_package.install_from_path(download_path)
+        return True
+    except Exception:  # pragma: no cover - network/environment dependent
+        return False
+
+
+def translate_text_neural(text, source_language, target_language):
+    """Translate using a local neural MT model when available, falling back to the
+    lightweight dictionary substitution otherwise. No external API is called."""
+    if not text or source_language == target_language:
+        return text
+
+    if ensure_argos_package(source_language, target_language):
+        try:
+            result = argos_translate.translate(text, source_language, target_language)
+            if result and result.strip():
+                return result
+        except Exception:  # pragma: no cover - environment dependent
+            pass
+
+    return translate_text(text, target_language=target_language)
 
 
 def preprocess_text(text, target_language="en"):
@@ -713,6 +782,163 @@ def classify_clauses(sentences, jurisdiction):
     return unique_flags
 
 
+# Labeled example sentences used to train a small local ML risk classifier. This is NOT
+# an external API — it's a TF-IDF + Logistic Regression model trained once, in-process,
+# from scikit-learn. Its job is to catch one-sided/risky clauses that are phrased
+# differently from the fixed keyword rules above (paraphrases, novel wording).
+RISK_TRAINING_EXAMPLES = [
+    ("The landlord reserves the right to increase the rent at his sole discretion without prior communication.", 1),
+    ("Tenant forfeits the entire security deposit if the lease is broken before the end date.", 1),
+    ("The owner may access the unit whenever necessary without informing the occupant in advance.", 1),
+    ("This agreement continues indefinitely unless the tenant cancels in writing within a very short window.", 1),
+    ("Failure to pay by the due date results in immediate legal proceedings against the tenant.", 1),
+    ("The tenant is fully responsible for any structural damage regardless of cause.", 1),
+    ("Any disagreement shall be settled exclusively by an arbitrator chosen by the landlord.", 1),
+    ("The tenant agrees not to pursue any claim against the landlord under any circumstance.", 1),
+    ("Guests are not permitted to stay overnight under any circumstances.", 1),
+    ("The landlord can terminate this lease at will for no stated reason.", 1),
+    ("Repairs to plumbing, electrical, and roofing are solely the tenant's financial responsibility.", 1),
+    ("A fee of two hundred dollars per day will accrue for any late payment.", 1),
+    ("The deposit will not be returned under any condition, even if the unit is left undamaged.", 1),
+    ("Contacting municipal authorities regarding this property will be treated as a breach of contract.", 1),
+    ("The tenant waives all rights to inspect the property before move-in.", 1),
+    ("This lease automatically renews for another full term unless cancelled ninety days in advance by certified mail.", 1),
+    ("The landlord is not obligated to give any notice before entering the premises.", 1),
+    ("Eviction may proceed within twenty-four hours of any alleged violation.", 1),
+    ("The tenant indemnifies the landlord against all claims, damages, and liabilities without limitation.", 1),
+    ("Subletting or assigning the lease is strictly forbidden under all circumstances.", 1),
+    ("Any modification to the property, however minor, results in a penalty of one thousand dollars.", 1),
+    ("The security deposit is non-refundable regardless of the condition of the unit at move-out.", 1),
+    ("Rent may be raised at any time without any advance warning to the tenant.", 1),
+    ("The tenant must vacate immediately upon receiving verbal notice.", 1),
+    ("This clause overrides any tenant protections provided under local law.", 1),
+    ("The landlord may withhold the entire deposit for normal wear and tear.", 1),
+    ("Tenant shall bear the cost of all appliance repairs including manufacturer defects.", 1),
+    ("No refunds will be issued for early termination of the lease under any reason.", 1),
+    ("The tenant agrees to pay all legal fees incurred by the landlord regardless of outcome.", 1),
+    ("Visitors staying more than one night will incur a penalty fee per occurrence.", 1),
+    ("The landlord is entitled to change the locks without notifying the tenant.", 1),
+    ("All disputes must be resolved through binding arbitration chosen solely by the landlord, waiving the right to a jury trial.", 1),
+    ("The tenant has no right to challenge any deduction made from the deposit.", 1),
+    ("This agreement can be terminated by the landlord without cause and without notice.", 1),
+    ("The tenant is liable for the full remaining rent even if the unit becomes uninhabitable.", 1),
+    ("The landlord may enter the unit at any hour of the day or night without consent.", 1),
+    ("Tenant agrees to waive the right to a court hearing in any dispute.", 1),
+    ("Any complaint filed with a housing authority will result in immediate lease termination.", 1),
+    ("The tenant must pay a nonrefundable administrative fee that is not disclosed until move-out.", 1),
+    ("The landlord may sell or transfer the property and terminate this lease without compensation.", 1),
+    ("Tenant is responsible for the full cost of any repairs, including those caused by normal aging of the building.", 1),
+    ("The landlord may charge additional rent retroactively at his own discretion.", 1),
+    ("The tenant forfeits all personal property left behind, and the landlord may dispose of it immediately.", 1),
+    ("This lease requires the tenant to give up the right to a security deposit refund entirely.", 1),
+    ("Rent increases of any amount may be imposed with only one day of notice.", 1),
+    ("The tenant may be locked out of the unit for any late payment without a court order.", 1),
+    ("The landlord is under no obligation to make any repairs during the tenancy.", 1),
+    ("The tenant shall not seek reimbursement for any repairs paid out of pocket, even emergency ones.", 1),
+    ("Guests of the tenant are prohibited entirely, with no exceptions.", 1),
+    ("The tenant agrees that the landlord's decision on any dispute is final and binding with no appeal.", 1),
+    ("A charge of five hundred dollars applies for each day the tenant is late in vacating the unit.", 1),
+    ("The monthly rent is due on the first of each month and may be paid by check or bank transfer.", 0),
+    ("The security deposit will be refunded within thirty days after move-out, less any documented damages.", 0),
+    ("Either party may terminate the lease with sixty days written notice.", 0),
+    ("The landlord will provide reasonable notice, generally twenty-four hours, before entering the unit for repairs.", 0),
+    ("Routine maintenance requests should be submitted through the online tenant portal.", 0),
+    ("Pets are welcome with a refundable pet deposit and written approval from the landlord.", 0),
+    ("The tenant is responsible for keeping the unit clean and reporting any needed repairs promptly.", 0),
+    ("Utilities including water and trash collection are included in the monthly rent.", 0),
+    ("Guests may stay for up to fourteen days per year without prior approval.", 0),
+    ("Rent increases will be communicated in writing at least sixty days before taking effect.", 0),
+    ("Either party may seek mediation before pursuing legal action in the event of a dispute.", 0),
+    ("The lease term is twelve months, renewable by mutual written agreement.", 0),
+    ("The landlord will handle major repairs including plumbing and electrical issues at no cost to the tenant.", 0),
+    ("The tenant may sublet the unit with the landlord's written consent, which shall not be unreasonably withheld.", 0),
+    ("Late payments incur a modest five dollar fee after a five-day grace period.", 0),
+    ("The tenant has the right to a walkthrough inspection at move-in and move-out.", 0),
+    ("Both parties agree to resolve disputes amicably and in good faith.", 0),
+    ("Smoke detectors will be tested and maintained by the landlord annually.", 0),
+    ("The tenant may request an itemized list of any deposit deductions.", 0),
+    ("Parking is included in the rent for one vehicle per unit.", 0),
+    ("The lease renews on a month-to-month basis after the initial term with thirty days notice to end.", 0),
+    ("Normal wear and tear will not be deducted from the security deposit.", 0),
+    ("The tenant is welcome to decorate the space as long as no permanent alterations are made.", 0),
+    ("Rent payments can be made online through the tenant portal at no extra charge.", 0),
+    ("The landlord shall give at least 24 hours notice before entering, except in genuine emergencies.", 0),
+    ("Common areas are cleaned weekly by the property management company.", 0),
+    ("The tenant may terminate early with 30 days notice and forfeiture of one month's rent.", 0),
+    ("This lease complies with all applicable local and state tenant protection laws.", 0),
+    ("The landlord agrees to maintain the property in a habitable condition throughout the tenancy.", 0),
+    ("Either party has the right to a fair hearing before a neutral third party in case of disputes.", 0),
+    ("The tenant will receive thirty days advance notice of any change in the terms of this agreement.", 0),
+    ("A move-in checklist will be completed jointly by the landlord and tenant.", 0),
+    ("The tenant may request repairs at any time through the maintenance hotline.", 0),
+    ("Rent is fixed for the duration of the lease term and will not change without mutual agreement.", 0),
+    ("The landlord will return the security deposit with an itemized statement within the legally required timeframe.", 0),
+    ("Tenants are encouraged to purchase renters insurance, though it is not mandatory.", 0),
+    ("The building has on-site laundry facilities available to all residents at no additional cost.", 0),
+    ("The tenant may invite guests to stay for reasonable periods with advance notice to the landlord.", 0),
+    ("Disputes over the security deposit may be taken to small claims court by either party.", 0),
+    ("The landlord must provide written notice at least one rental period before ending a month-to-month tenancy.", 0),
+    ("A pet policy allows cats and dogs under thirty pounds with a modest monthly pet rent.", 0),
+    ("The tenant has the right to quiet enjoyment of the premises throughout the lease term.", 0),
+    ("The lease includes a standard thirty-day notice period for either party to end a month-to-month tenancy.", 0),
+    ("Maintenance staff will respond to non-emergency requests within 48 business hours.", 0),
+    ("The tenant is not responsible for major structural repairs, which remain the landlord's obligation.", 0),
+]
+
+
+@lru_cache(maxsize=1)
+def get_risk_classifier():
+    """Train a small local ML model (TF-IDF + Logistic Regression) that flags risky or
+    one-sided lease language, including paraphrased wording the fixed keyword rules above
+    don't cover. Trained once per process from the bundled examples above — everything
+    runs locally in scikit-learn, no network calls and no external API involved."""
+    if TfidfVectorizer is None or LogisticRegression is None or Pipeline is None:
+        return None
+
+    texts = [example[0] for example in RISK_TRAINING_EXAMPLES]
+    labels = [example[1] for example in RISK_TRAINING_EXAMPLES]
+
+    pipeline = Pipeline(
+        [
+            ("tfidf", TfidfVectorizer(ngram_range=(1, 2), min_df=1, stop_words="english", sublinear_tf=True)),
+            ("clf", LogisticRegression(max_iter=1000, class_weight="balanced", C=2.0)),
+        ]
+    )
+    try:
+        pipeline.fit(texts, labels)
+        return pipeline
+    except Exception:  # pragma: no cover - defensive
+        return None
+
+
+def ml_flag_risky_sentences(sentences, known_clauses=None, threshold=0.65, limit=10):
+    """Score each sentence with the local ML classifier and return likely-risky ones the
+    deterministic rule engine (classify_clauses) hadn't already flagged, so paraphrased or
+    unusual risky language doesn't slip through a purely keyword-based check."""
+    classifier = get_risk_classifier()
+    if classifier is None or not sentences:
+        return []
+
+    known = {clause.lower() for clause in (known_clauses or [])}
+
+    try:
+        probabilities = classifier.predict_proba(sentences)[:, 1]
+    except Exception:  # pragma: no cover - defensive
+        return []
+
+    scored = []
+    seen = set()
+    for sentence, probability in zip(sentences, probabilities):
+        key = sentence.lower()
+        if probability < threshold or key in known or key in seen:
+            continue
+        seen.add(key)
+        scored.append({"clause": sentence, "probability": round(float(probability), 2)})
+
+    scored.sort(key=lambda item: item["probability"], reverse=True)
+    return scored[:limit]
+
+
 def infer_jurisdiction(text, jurisdiction=None):
     if jurisdiction:
         return jurisdiction
@@ -882,6 +1108,18 @@ def main():
 
     st.subheader("Translation options")
     target_language = st.selectbox("Translate detected agreement text", ["en", "hi"], format_func=lambda value: "English" if value == "en" else "Hindi")
+    translation_engine = st.radio(
+        "Translation engine",
+        ["Neural (local ML, higher quality)", "Dictionary (instant, offline)"],
+        index=0,
+        horizontal=True,
+        help=(
+            "Neural uses Argos Translate, an offline machine-translation model that runs locally. "
+            "The first use for a language pair downloads a small open model file once; every "
+            "translation after that runs on-device with no external API calls. If the model can't "
+            "be downloaded, this automatically falls back to the Dictionary engine."
+        ),
+    )
     show_translation = st.checkbox("Show translated preview", value=True)
 
     if st.button("Analyze Agreement"):
@@ -897,7 +1135,11 @@ def main():
 
         with st.spinner("Analyzing agreement..."):
             analysis = analyze_agreement(text, target_language="en")
-            translated_text = translate_text(text, target_language=target_language)
+            source_language = detect_language(text)
+            if translation_engine.startswith("Neural"):
+                translated_text = translate_text_neural(text, source_language, target_language)
+            else:
+                translated_text = translate_text(text, target_language=target_language)
             sentences = split_sentences(text)
             entities = extract_entities(text)
             key_terms = extract_key_terms(text)
@@ -905,6 +1147,8 @@ def main():
             risks = analysis.get("risk_flags", [])
             score = analysis.get("score", 100)
             band = analysis.get("band", "Low")
+            known_clause_texts = [flag["clause"] for flag in risks] + list(clauses)
+            ml_candidates = ml_flag_risky_sentences(sentences, known_clauses=known_clause_texts)
             summary = generate_summary(text, entities, key_terms, clauses, risks, score, band)
             summary = summary + f"\n\nRecommendation: {analysis.get('recommendation', '')}"
 
@@ -957,6 +1201,7 @@ def main():
                 st.write(f"- {clause}")
 
         with tab3:
+            st.subheader("Rule-based risk flags")
             if risks:
                 for risk in risks:
                     st.warning(f"[{risk['severity']}] {risk['category'].title()} - {risk['reason']}")
@@ -964,6 +1209,22 @@ def main():
                         st.caption(f"Reference: {risk['law_reference']}")
             else:
                 st.success("No suspicious terms were detected from the configured risk list.")
+
+            st.divider()
+            st.subheader("🧠 ML risk scanner (beta)")
+            st.caption(
+                "A local TF-IDF + Logistic Regression model (scikit-learn, trained in-process on "
+                "bundled examples — no external API) scans every sentence for one-sided or risky "
+                "language, including phrasing the fixed keyword rules above don't cover. Always "
+                "review flagged sentences yourself; this is a second opinion, not a verdict."
+            )
+            if get_risk_classifier() is None:
+                st.info("scikit-learn isn't installed, so the ML risk scanner is unavailable.")
+            elif ml_candidates:
+                for candidate in ml_candidates:
+                    st.warning(f"[ML confidence {candidate['probability']:.0%}] {candidate['clause']}")
+            else:
+                st.success("The ML scanner didn't find additional risky-sounding clauses beyond the rule-based list.")
 
         with tab4:
             with st.expander("View full agreement text", expanded=False):
