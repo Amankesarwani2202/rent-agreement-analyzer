@@ -381,33 +381,50 @@ def extract_key_terms(text):
     data["Lease Term"] = lease_term
 
     notice_value = "Not clearly found"
+    notice_candidates = []
     for sentence in sentences:
         lowered = sentence.lower()
         if any(token in lowered for token in ["notice", "vacate", "terminate", "expiry", "renew", "renewal"]):
-            day_match = re.search(r"\b(\d+)\s*(day|days)\b", sentence, re.IGNORECASE)
+            notice_candidates.append(sentence)
+
+    duration_pattern = r"\b(\d+)(?:\s*[\)\]\-./])?\s*(day|days|month|months)\b"
+    for sentence in notice_candidates:
+        lowered = sentence.lower()
+        if any(token in lowered for token in ["written notice", "vacate", "before expiry", "before end", "terminate", "notice of intent", "notice to"]):
+            day_match = re.search(duration_pattern, sentence, re.IGNORECASE)
             if day_match:
                 amount = int(day_match.group(1))
-                label = "day" if amount == 1 else "days"
+                unit = day_match.group(2).lower()
+                if unit.startswith("day"):
+                    label = "day" if amount == 1 else "days"
+                else:
+                    label = "month" if amount == 1 else "months"
                 notice_value = f"{amount} {label}"
                 break
-            month_match = re.search(r"\b(\d+)\s*(month|months)\b", sentence, re.IGNORECASE)
-            if month_match:
-                amount = int(month_match.group(1))
-                label = "month" if amount == 1 else "months"
-                notice_value = f"{amount} {label}"
-                break
+
     if notice_value == "Not clearly found":
-        day_match = re.search(r"\b(\d+)\s*(day|days)\b", normalized, re.IGNORECASE)
+        for sentence in notice_candidates:
+            day_match = re.search(duration_pattern, sentence, re.IGNORECASE)
+            if day_match:
+                amount = int(day_match.group(1))
+                unit = day_match.group(2).lower()
+                if unit.startswith("day"):
+                    label = "day" if amount == 1 else "days"
+                else:
+                    label = "month" if amount == 1 else "months"
+                notice_value = f"{amount} {label}"
+                break
+
+    if notice_value == "Not clearly found":
+        day_match = re.search(duration_pattern, normalized, re.IGNORECASE)
         if day_match:
             amount = int(day_match.group(1))
-            label = "day" if amount == 1 else "days"
-            notice_value = f"{amount} {label}"
-        else:
-            month_match = re.search(r"\b(\d+)\s*(month|months)\b", normalized, re.IGNORECASE)
-            if month_match:
-                amount = int(month_match.group(1))
+            unit = day_match.group(2).lower()
+            if unit.startswith("day"):
+                label = "day" if amount == 1 else "days"
+            else:
                 label = "month" if amount == 1 else "months"
-                notice_value = f"{amount} {label}"
+            notice_value = f"{amount} {label}"
     data["Notice Period"] = notice_value
 
     payment_due = "Not clearly found"
