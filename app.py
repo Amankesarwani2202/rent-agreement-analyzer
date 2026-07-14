@@ -20,118 +20,210 @@ JURISDICTIONS = {
     "DEFAULT": "Other / Generic",
 }
 
+# Semantic accent colors only (single hex per state). Backgrounds/borders are
+# derived at render time with CSS color-mix() against the active Streamlit
+# theme variables, so the same accent looks right in both light and dark mode.
 SEVERITY_STYLE = {
-    "severe": ("#b91c1c", "#fef2f2", "#fecaca"),
-    "moderate": ("#c2410c", "#fff7ed", "#fed7aa"),
-    "mild": ("#a16207", "#fefce8", "#fde68a"),
+    "severe": "#ef4444",
+    "moderate": "#f97316",
+    "mild": "#eab308",
 }
 
 BAND_STYLE = {
-    "Low": ("#15803d", "#f0fdf4"),
-    "Medium": ("#c2410c", "#fff7ed"),
-    "High": ("#b91c1c", "#fef2f2"),
+    "Low": "#22c55e",
+    "Medium": "#f97316",
+    "High": "#ef4444",
 }
 
 CSS = """
-/* Updated for Streamlit 1.50+; prefers stable data-testid selectors and theme-friendly colors. */
-
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
 
-/* ---- base page ---- */
-.stApp { background: #f8fafc; }
-.block-container { padding-top: 1.2rem; max-width: 1100px; }
-
-/* ---- sidebar: force it to match the light theme instead of the
-   Streamlit-default dark sidebar that was clashing with the page ---- */
-section[data-testid="stSidebar"] {
-  background: #ffffff;
-  border-right: 1px solid #e2e8f0;
-}
-section[data-testid="stSidebar"] * {
-  color: #0f172a !important;
-}
-section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div {
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  color: #0f172a !important;
+html, body, [class*="css"] {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* ---- widgets: text area, selectbox, file uploader were inheriting a
-   dark theme background/text color, making them look broken next to
-   the light cards. Force them light + legible. ---- */
-.stTextArea textarea {
-  background: #ffffff !important;
-  color: #0f172a !important;
-  border: 1px solid #cbd5e1 !important;
-  border-radius: 10px;
-}
-.stTextArea textarea::placeholder {
-  color: #94a3b8 !important;
-}
-div[data-baseweb="select"] > div {
-  background: #ffffff !important;
-  color: #0f172a !important;
-  border: 1px solid #cbd5e1 !important;
-  border-radius: 10px;
-}
-div[data-testid="stFileUploaderDropzone"] {
-  background: #ffffff !important;
-  border: 1.5px dashed #94a3b8 !important;
-  border-radius: 12px;
-}
-div[data-testid="stFileUploaderDropzone"] * {
-  color: #334155 !important;
+/* ----- Layout ----- */
+.block-container {
+  padding-top: 1.4rem;
+  max-width: 1120px;
 }
 
-/* ---- hero ---- */
+/* ----- Hero ----- */
 .hero {
   background: linear-gradient(120deg, #0f172a 0%, #1e3a8a 60%, #0e7490 100%);
-  border-radius: 18px; padding: 2.2rem 2.4rem; color: white; margin-bottom: 1.4rem;
+  border-radius: 20px;
+  padding: clamp(1.6rem, 4vw, 2.6rem) clamp(1.4rem, 4vw, 2.6rem);
+  color: #f8fafc;
+  margin-bottom: 1.6rem;
+  box-shadow: 0 10px 30px -12px rgba(2, 6, 23, 0.55);
 }
-.hero h1 { color: white; font-size: 2.1rem; font-weight: 800; margin: 0 0 .5rem 0; }
-.hero p { color: #cbd5e1; font-size: 1.02rem; margin: 0; max-width: 46rem; }
-.badge-row { margin-top: 1rem; }
+.hero h1 {
+  color: #ffffff;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 800;
+  margin: 0 0 .5rem 0;
+  letter-spacing: -.01em;
+}
+.hero p {
+  color: #cbd5e1;
+  font-size: 1.02rem;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 46rem;
+}
+.badge-row {
+  margin-top: 1.1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
 .hero-badge {
-  display: inline-block; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25);
-  color: #e2e8f0; border-radius: 999px; padding: .25rem .8rem; font-size: .8rem; margin-right: .5rem;
+  display: inline-block;
+  background: rgba(255, 255, 255, .12);
+  border: 1px solid rgba(255, 255, 255, .25);
+  color: #e2e8f0;
+  border-radius: 999px;
+  padding: .3rem .85rem;
+  font-size: .8rem;
+  font-weight: 500;
+  backdrop-filter: blur(4px);
 }
 
-/* ---- cards ---- */
+/* ----- Theme-aware cards ----- */
 .card {
-  background: white; border: 1px solid #e2e8f0; border-radius: 14px;
-  padding: 1.1rem 1.3rem; margin-bottom: .8rem; box-shadow: 0 1px 2px rgba(15,23,42,.04);
+  background: color-mix(in srgb, var(--background-color) 40%, var(--secondary-background-color) 60%);
+  border: 1px solid color-mix(in srgb, var(--text-color) 12%, transparent);
+  border-radius: 14px;
+  padding: 1.15rem 1.35rem;
+  margin-bottom: .85rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
 }
-.score-num { font-size: 3rem; font-weight: 800; line-height: 1; }
-.metric-label { color: #64748b; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; }
-.metric-value { font-size: 1.3rem; font-weight: 700; color: #0f172a; }
-.risk-card { border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: .7rem; border: 1px solid; }
-.risk-title { font-weight: 700; font-size: 1.0rem; margin-bottom: .25rem; }
-.risk-reason { color: #334155; font-size: .95rem; }
-.risk-clause { color: #64748b; font-size: .85rem; font-style: italic; margin-top: .45rem;
-  border-left: 3px solid #cbd5e1; padding-left: .6rem; }
-.sev-pill { display: inline-block; border-radius: 999px; padding: .1rem .6rem; font-size: .75rem;
-  font-weight: 700; margin-left: .5rem; vertical-align: middle; }
-.kt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .7rem; }
-.kt-cell { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: .8rem 1rem; }
-.kt-label { color: #64748b; font-size: .78rem; }
-.kt-value { font-weight: 700; font-size: 1.05rem; color: #0f172a; margin-top: .15rem; }
 
-/* ---- tabs: pill style, with the native red highlight bar removed so it
-   doesn't sit underneath the pill background like a stray underline ---- */
-.stTabs [data-baseweb="tab-list"] { gap: .4rem; border-bottom: none; }
-.stTabs [data-baseweb="tab-highlight"] { display: none; }
-.stTabs [data-baseweb="tab-border"] { display: none; }
+.score-num { font-size: 3rem; font-weight: 800; line-height: 1; }
+.metric-label {
+  color: color-mix(in srgb, var(--text-color) 62%, transparent);
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.metric-value { font-size: 1.3rem; font-weight: 700; color: var(--text-color); }
+
+.risk-card {
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: .75rem;
+  border: 1px solid;
+}
+.risk-title { font-weight: 700; font-size: 1.0rem; margin-bottom: .3rem; color: var(--text-color); }
+.risk-reason { color: color-mix(in srgb, var(--text-color) 85%, transparent); font-size: .95rem; line-height: 1.5; }
+.risk-clause {
+  color: color-mix(in srgb, var(--text-color) 60%, transparent);
+  font-size: .85rem;
+  font-style: italic;
+  margin-top: .5rem;
+  border-left: 3px solid color-mix(in srgb, var(--text-color) 25%, transparent);
+  padding-left: .65rem;
+}
+.risk-ref {
+  color: color-mix(in srgb, var(--text-color) 45%, transparent);
+  font-size: .78rem;
+  margin-top: .45rem;
+}
+.sev-pill {
+  display: inline-block;
+  border-radius: 999px;
+  padding: .12rem .65rem;
+  font-size: .75rem;
+  font-weight: 700;
+  margin-left: .5rem;
+  vertical-align: middle;
+  color: #ffffff;
+}
+
+/* ----- Key terms grid ----- */
+.kt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: .75rem;
+}
+.kt-cell {
+  background: color-mix(in srgb, var(--background-color) 40%, var(--secondary-background-color) 60%);
+  border: 1px solid color-mix(in srgb, var(--text-color) 12%, transparent);
+  border-radius: 12px;
+  padding: .85rem 1.05rem;
+}
+.kt-label {
+  color: color-mix(in srgb, var(--text-color) 60%, transparent);
+  font-size: .78rem;
+}
+.kt-value { font-weight: 700; font-size: 1.05rem; color: var(--text-color); margin-top: .18rem; }
+
+/* ----- Tabs (stable data-baseweb selectors) ----- */
+.stTabs [data-baseweb="tab-list"] { gap: .45rem; flex-wrap: wrap; }
 .stTabs [data-baseweb="tab"] {
   border-radius: 999px;
-  padding: .45rem 1.1rem;
-  background: #eef2f7;
-  color: #0f172a;
+  padding: .5rem 1.15rem;
+  background: color-mix(in srgb, var(--text-color) 6%, var(--secondary-background-color) 94%);
+  color: var(--text-color);
 }
-.stTabs [aria-selected="true"] { background: #1e3a8a !important; color: white !important; }
+.stTabs [aria-selected="true"] {
+  background: var(--primary-color) !important;
+  color: #ffffff !important;
+}
 
-.footer-note { color: #94a3b8; font-size: .82rem; margin-top: 2rem; text-align: center; }
+/* ----- Inputs ----- */
+.stTextArea textarea,
+.stSelectbox div[data-baseweb="select"] > div,
+.stFileUploader section {
+  border-radius: 12px !important;
+  border-color: color-mix(in srgb, var(--text-color) 18%, transparent) !important;
+}
+.stFileUploader section {
+  background: color-mix(in srgb, var(--background-color) 40%, var(--secondary-background-color) 60%);
+}
+
+/* ----- Primary button: professional blue gradient ----- */
+div.stButton > button[kind="primary"],
+div.stDownloadButton > button[kind="primary"] {
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  border: none;
+  color: #ffffff;
+  font-weight: 600;
+  border-radius: 10px;
+  padding: .6rem 1.1rem;
+  transition: filter .15s ease, transform .15s ease, box-shadow .15s ease;
+  box-shadow: 0 4px 14px -6px rgba(29, 78, 216, .55);
+}
+div.stButton > button[kind="primary"]:hover,
+div.stDownloadButton > button[kind="primary"]:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px -6px rgba(29, 78, 216, .65);
+}
+div.stButton > button[kind="primary"]:active,
+div.stDownloadButton > button[kind="primary"]:active {
+  transform: translateY(0);
+  filter: brightness(0.97);
+}
+
+/* ----- Sidebar ----- */
+[data-testid="stSidebar"] { border-right: 1px solid color-mix(in srgb, var(--text-color) 10%, transparent); }
+
+/* ----- Footer ----- */
+.footer-note {
+  color: color-mix(in srgb, var(--text-color) 42%, transparent);
+  font-size: .82rem;
+  margin-top: 2.2rem;
+  text-align: center;
+}
+
+/* ----- Responsive tweaks ----- */
+@media (max-width: 900px) {
+  .block-container { padding-left: 1rem; padding-right: 1rem; }
+  .hero { padding: 1.6rem 1.4rem; }
+  .kt-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
 </style>
 """
 
@@ -155,15 +247,15 @@ def hero(lang):
 
 
 def render_score(analysis, lang):
-    color, background = BAND_STYLE[analysis["band"]]
+    color = BAND_STYLE[analysis["band"]]
     flags = analysis["risk_flags"]
     st.markdown(
         f"""
-        <div class="card" style="background:{background}; border-color:{color}33;">
+        <div class="card" style="border-color:{color}55; background: color-mix(in srgb, var(--secondary-background-color) 88%, {color} 12%);">
           <div style="display:flex; align-items:center; gap:2rem; flex-wrap:wrap;">
             <div>
               <div class="metric-label">{i18n.t('risk_score', lang)}</div>
-              <div class="score-num" style="color:{color};">{analysis['score']}<span style="font-size:1.2rem; color:#64748b;">/100</span></div>
+              <div class="score-num" style="color:{color};">{analysis['score']}<span style="font-size:1.2rem; color:color-mix(in srgb, var(--text-color) 55%, transparent);">/100</span></div>
               <div style="font-weight:800; color:{color}; margin-top:.2rem;">{i18n.band_text(analysis['band'], lang)}</div>
             </div>
             <div>
@@ -187,17 +279,17 @@ def render_risks(flags, lang):
         return
     order = {"severe": 0, "moderate": 1, "mild": 2}
     for flag in sorted(flags, key=lambda f: order.get(f["severity"], 3)):
-        color, background, border = SEVERITY_STYLE[flag["severity"]]
+        color = SEVERITY_STYLE[flag["severity"]]
         reason = i18n.reason_text(flag.get("reason_key"), lang, flag.get("reason", ""))
         st.markdown(
             f"""
-            <div class="risk-card" style="background:{background}; border-color:{border};">
-              <div class="risk-title" style="color:{color};">{i18n.category_text(flag['category'], lang)}
-                <span class="sev-pill" style="background:{color}; color:white;">{i18n.severity_text(flag['severity'], lang)}</span>
+            <div class="risk-card" style="border-color:{color}55; background: color-mix(in srgb, var(--secondary-background-color) 88%, {color} 12%);">
+              <div class="risk-title">{i18n.category_text(flag['category'], lang)}
+                <span class="sev-pill" style="background:{color};">{i18n.severity_text(flag['severity'], lang)}</span>
               </div>
               <div class="risk-reason">{reason}</div>
               <div class="risk-clause">“{flag['clause'][:260]}”</div>
-              <div style="color:#94a3b8; font-size:.78rem; margin-top:.4rem;">{i18n.t('reference_label', lang)}: {flag.get('law_reference', '')}</div>
+              <div class="risk-ref">{i18n.t('reference_label', lang)}: {flag.get('law_reference', '')}</div>
             </div>
             """,
             unsafe_allow_html=True,
