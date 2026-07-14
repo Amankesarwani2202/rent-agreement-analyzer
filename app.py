@@ -33,11 +33,59 @@ BAND_STYLE = {
 }
 
 CSS = """
+/* Updated for Streamlit 1.50+; prefers stable data-testid selectors and theme-friendly colors. */
+
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
+
+/* ---- base page ---- */
 .stApp { background: #f8fafc; }
 .block-container { padding-top: 1.2rem; max-width: 1100px; }
+
+/* ---- sidebar: force it to match the light theme instead of the
+   Streamlit-default dark sidebar that was clashing with the page ---- */
+section[data-testid="stSidebar"] {
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+}
+section[data-testid="stSidebar"] * {
+  color: #0f172a !important;
+}
+section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #0f172a !important;
+}
+
+/* ---- widgets: text area, selectbox, file uploader were inheriting a
+   dark theme background/text color, making them look broken next to
+   the light cards. Force them light + legible. ---- */
+.stTextArea textarea {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px;
+}
+.stTextArea textarea::placeholder {
+  color: #94a3b8 !important;
+}
+div[data-baseweb="select"] > div {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px;
+}
+div[data-testid="stFileUploaderDropzone"] {
+  background: #ffffff !important;
+  border: 1.5px dashed #94a3b8 !important;
+  border-radius: 12px;
+}
+div[data-testid="stFileUploaderDropzone"] * {
+  color: #334155 !important;
+}
+
+/* ---- hero ---- */
 .hero {
   background: linear-gradient(120deg, #0f172a 0%, #1e3a8a 60%, #0e7490 100%);
   border-radius: 18px; padding: 2.2rem 2.4rem; color: white; margin-bottom: 1.4rem;
@@ -49,6 +97,8 @@ html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
   display: inline-block; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25);
   color: #e2e8f0; border-radius: 999px; padding: .25rem .8rem; font-size: .8rem; margin-right: .5rem;
 }
+
+/* ---- cards ---- */
 .card {
   background: white; border: 1px solid #e2e8f0; border-radius: 14px;
   padding: 1.1rem 1.3rem; margin-bottom: .8rem; box-shadow: 0 1px 2px rgba(15,23,42,.04);
@@ -67,9 +117,20 @@ html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
 .kt-cell { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: .8rem 1rem; }
 .kt-label { color: #64748b; font-size: .78rem; }
 .kt-value { font-weight: 700; font-size: 1.05rem; color: #0f172a; margin-top: .15rem; }
-.stTabs [data-baseweb="tab-list"] { gap: .4rem; }
-.stTabs [data-baseweb="tab"] { border-radius: 999px; padding: .45rem 1.1rem; background: #eef2f7; }
+
+/* ---- tabs: pill style, with the native red highlight bar removed so it
+   doesn't sit underneath the pill background like a stray underline ---- */
+.stTabs [data-baseweb="tab-list"] { gap: .4rem; border-bottom: none; }
+.stTabs [data-baseweb="tab-highlight"] { display: none; }
+.stTabs [data-baseweb="tab-border"] { display: none; }
+.stTabs [data-baseweb="tab"] {
+  border-radius: 999px;
+  padding: .45rem 1.1rem;
+  background: #eef2f7;
+  color: #0f172a;
+}
 .stTabs [aria-selected="true"] { background: #1e3a8a !important; color: white !important; }
+
 .footer-note { color: #94a3b8; font-size: .82rem; margin-top: 2rem; text-align: center; }
 </style>
 """
