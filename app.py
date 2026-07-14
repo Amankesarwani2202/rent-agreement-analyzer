@@ -167,9 +167,19 @@ html, body, [class*="css"] {
   background: color-mix(in srgb, var(--text-color) 6%, var(--secondary-background-color) 94%);
   color: var(--text-color);
 }
-.stTabs [aria-selected="true"] {
+/* The visible label sits in a nested <p>, which carries its own color from
+   Streamlit's markdown renderer. Force color on both the tab button and its
+   descendants so the background swap and text color always change together
+   (prevents white-on-white / invisible labels on the selected tab). */
+.stTabs [data-baseweb="tab"] * {
+  color: inherit !important;
+}
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
   background: var(--primary-color) !important;
   color: #ffffff !important;
+}
+.stTabs [data-baseweb="tab-highlight"] {
+  background-color: var(--primary-color) !important;
 }
 
 /* ----- Inputs ----- */
